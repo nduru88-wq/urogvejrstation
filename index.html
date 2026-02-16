@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Infoskærm – Nørholm</title>
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#161a22;
+      --text:#e9edf3;
+      --muted:#a7b0c0;
+      --radius:18px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .wrap{
+      height:100%;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+      padding:14px;
+    }
+
+    .card{
+      background:var(--panel);
+      border-radius:var(--radius);
+      padding:26px 22px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Alt midtercentreret */
+    .center{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      gap:14px;
+    }
+
+    /* STØRRE TEKSTER */
+    .headline{
+      font-size:52px;
+      font-weight:900;
+      line-height:1.05;
+      margin:0;
+      color:var(--text);
+    }
+
+    .dateLine{
+      font-size:32px;
+      font-weight:800;
+      margin:0;
+      color:var(--text);
+      opacity:.95;
+    }
+
+    .bigTime{
+      font-size:92px;
+      font-weight:900;
+      line-height:1.02;
+      margin:0;
+      letter-spacing: .5px;
+    }
+
+    .dayPart{
+      font-size:38px;
+      font-weight:900;
+      margin:0;
+      opacity:.98;
+    }
+
+    .weatherIcon{
+      font-size:86px;
+      line-height:1;
+      margin-top:4px;
+    }
+
+    .bigTemp{
+      font-size:92px;
+      font-weight:900;
+      line-height:1.02;
+      margin:0;
+    }
+
+    .weatherDesc{
+      font-size:32px;
+      font-weight:900;
+      margin:0;
+      opacity:.95;
+    }
+
+    /* Kun højre: "Sidst opdateret" nederst til højre */
+    .rightFooter{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:auto;
+      padding-top:10px;
+    }
+    .updated{
+      font-size:16px;
+      font-style:italic;
+      color:var(--muted);
+      opacity:.9;
+    }
+
+    @media (max-width: 900px){
+      .wrap{ grid-template-columns: 1fr; }
+      .headline{ font-size:46px; }
+      .dateLine, .weatherDesc{ font-size:30px; }
+      .bigTime, .bigTemp{ font-size:84px; }
+      .weatherIcon{ font-size:78px; }
+      .dayPart{ font-size:34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- VENSTRE: UR -->
+    <section class="card" aria-label="Ur">
+      <div class="center">
+        <h1 class="headline" id="weekdayBig">—</h1>
+        <p class="dateLine" id="dateLine">—</p>
+        <p class="bigTime" id="timeLine">—:—</p>
+        <p class="dayPart" id="dayPartLine">—</p>
+      </div>
+    </section>
+
+    <!-- HØJRE: VEJR -->
+    <section class="card" aria-label="Vejr">
+      <div class="center">
+        <h1 class="headline">Nørholm</h1>
+        <p class="weatherDesc" id="weatherSummary">Henter vejr…</p>
+        <div class="weatherIcon" id="weatherIcon">⛅</div>
+        <p class="bigTemp" id="tempLine">—°</p>
+      </div>
+
+      <div class="rightFooter">
+        <div class="updated" id="updatedLine">Sidst opdateret: —</div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+  // --- FAST LOKATION: NØRHOLM (ca.)
+  const LAT = 57.037145;
+  const LON = 9.737577;
+
+  // --- UR / DATO
+  const dkWeekdays = ["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
+  const dkMonths = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+
+  function dayPart(h){
+    if (h >= 5 && h < 9)  return "Morgen";
+    if (h >= 9 && h < 12) return "Formiddag";
+    if (h >= 12 && h < 17) return "Eftermiddag";
+    if (h >= 17 && h < 22) return "Aften";
+    return "Nat";
+  }
+  function pad2(n){ return String(n).padStart(2,"0"); }
+
+  function tickClock(){
+    const now = new Date();
+    const wd = dkWeekdays[now.getDay()];
+    const d = now.getDate();
+    const m = dkMonths[now.getMonth()];
+    const y = now.getFullYear();
+    const hh = pad2(now.getHours());
+    const mm = pad2(now.getMinutes());
+
+    document.getElementById("weekdayBig").textContent = wd;
+    document.getElementById("dateLine").textContent = `${d}. ${m} ${y}`;
+    document.getElementById("timeLine").textContent = `${hh}:${mm}`;
+    document.getElementById("dayPartLine").textContent = dayPart(now.getHours());
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // --- VEJR (Open-Meteo: ingen nøgle)
+  const weatherCodeMap = {
+    0: ["Klart", "☀️"],
+    1: ["Mest klart", "🌤️"],
+    2: ["Let skyet", "⛅"],
+    3: ["Overskyet", "☁️"],
+    45: ["Tåge", "🌫️"],
+    48: ["Tåge", "🌫️"],
+    51: ["Støvregn", "🌦️"],
+    53: ["Støvregn", "🌦️"],
+    55: ["Støvregn", "🌧️"],
+    61: ["Regn", "🌧️"],
+    63: ["Regn", "🌧️"],
+    65: ["Kraftig regn", "🌧️"],
+    71: ["Sne", "🌨️"],
+    73: ["Sne", "🌨️"],
+    75: ["Kraftig sne", "🌨️"],
+    80: ["Byger", "🌦️"],
+    81: ["Byger", "🌦️"],
+    82: ["Kraftige byger", "⛈️"],
+    95: ["Torden", "⛈️"],
+    96: ["Torden + hagl", "⛈️"],
+    99: ["Torden + hagl", "⛈️"]
+  };
+
+  function fmtHHMM(d){
+    return d.toLocaleTimeString("da-DK", {hour:"2-digit", minute:"2-digit"});
+  }
+
+  async function fetchWeather(){
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${LAT}&longitude=${LON}` +
+      `&current=temperature_2m,weather_code` +
+      `&timezone=Europe%2FCopenhagen`;
+
+    try{
+      const r = await fetch(url, { cache: "no-store" });
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      const data = await r.json();
+
+      const c = data.current;
+      const temp = c.temperature_2m;
+      const wcode = c.weather_code;
+
+      const [desc, icon] = weatherCodeMap[wcode] || ["Vejr", "⛅"];
+
+      document.getElementById("weatherSummary").textContent = desc;
+      document.getElementById("weatherIcon").textContent = icon;
+      document.getElementById("tempLine").textContent = `${Math.round(temp)}°`;
+
+      const now = new Date();
+      document.getElementById("updatedLine").textContent = `Sidst opdateret: ${fmtHHMM(now)}`;
+
+    }catch(err){
+      document.getElementById("weatherSummary").textContent = "Kunne ikke hente vejr";
+      document.getElementById("weatherIcon").textContent = "⚠️";
+      console.warn(err);
+    }
+  }
+
+  // --- OPDATER KUN PÅ KVARTER: :00, :15, :30, :45 (lokal tid)
+  function msUntilNextQuarter(){
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    const ms = now.getMilliseconds();
+
+    const nextQuarterMin = (Math.floor(minutes / 15) + 1) * 15;
+    const next = new Date(now);
+
+    if (nextQuarterMin >= 60){
+      next.setHours(now.getHours() + 1, 0, 0, 0);
+    } else {
+      next.setMinutes(nextQuarterMin, 0, 0);
+    }
+
+    return next.getTime() - now.getTime();
+  }
+
+  function scheduleQuarterUpdates(){
+    // Hent straks ved start
+    fetchWeather();
+
+    // Planlæg næste præcise kvart
+    const delay = msUntilNextQuarter();
+    setTimeout(function(){
+      fetchWeather();
+      // Derefter hvert kvarter præcist
+      setInterval(fetchWeather, 15 * 60 * 1000);
+    }, delay);
+  }
+
+  scheduleQuarterUpdates();
+</script>
+</body>
+</html>
