@@ -39,7 +39,6 @@
       flex-direction:column;
     }
 
-    /* Alt midtercentreret */
     .center{
       flex:1;
       display:flex;
@@ -50,7 +49,6 @@
       gap:14px;
     }
 
-    /* STØRRE TEKSTER */
     .headline{
       font-size:52px;
       font-weight:900;
@@ -102,7 +100,6 @@
       opacity:.95;
     }
 
-    /* Kun højre: "Sidst opdateret" nederst til højre */
     .rightFooter{
       display:flex;
       justify-content:flex-end;
@@ -114,6 +111,7 @@
       font-style:italic;
       color:var(--muted);
       opacity:.9;
+      white-space:nowrap;
     }
 
     @media (max-width: 900px){
@@ -175,16 +173,9 @@
 
   function tickClock(){
     const now = new Date();
-    const wd = dkWeekdays[now.getDay()];
-    const d = now.getDate();
-    const m = dkMonths[now.getMonth()];
-    const y = now.getFullYear();
-    const hh = pad2(now.getHours());
-    const mm = pad2(now.getMinutes());
-
-    document.getElementById("weekdayBig").textContent = wd;
-    document.getElementById("dateLine").textContent = `${d}. ${m} ${y}`;
-    document.getElementById("timeLine").textContent = `${hh}:${mm}`;
+    document.getElementById("weekdayBig").textContent = dkWeekdays[now.getDay()];
+    document.getElementById("dateLine").textContent = `${now.getDate()}. ${dkMonths[now.getMonth()]} ${now.getFullYear()}`;
+    document.getElementById("timeLine").textContent = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
     document.getElementById("dayPartLine").textContent = dayPart(now.getHours());
   }
   tickClock();
@@ -219,7 +210,59 @@
     return d.toLocaleTimeString("da-DK", {hour:"2-digit", minute:"2-digit"});
   }
 
-  async function fetchWeather(){
+  // -------- Auto-recovery / "browser-genstart"
+  let consecutiveFailures = 0;
+  let retryTimer = null;
+
+  // Reload-sikring (undgå reload-loop)
+  const RELOAD_COOLDOWN_MS = 5 * 60 * 1000; // min 5 min mellem reloads
+  const MAX_RELOADS_PER_HOUR = 3;
+
+  function canReloadNow(){
+    const now = Date.now();
+
+    const lastReload = Number(sessionStorage.getItem("lastReloadTs") || "0");
+    if (now - lastReload < RELOAD_COOLDOWN_MS) return false;
+
+    // track reloads i den seneste time
+    const history = JSON.parse(sessionStorage.getItem("reloadHistory") || "[]")
+      .filter(ts => now - ts < 60 * 60 * 1000);
+
+    if (history.length >= MAX_RELOADS_PER_HOUR) return false;
+
+    history.push(now);
+    sessionStorage.setItem("reloadHistory", JSON.stringify(history));
+    sessionStorage.setItem("lastReloadTs", String(now));
+    return true;
+  }
+
+  function softRestartPage(reason){
+    console.warn("Soft restart:", reason);
+    if (canReloadNow()){
+      location.reload();
+    } else {
+      // hvis vi ikke må reload'e (for at undgå loop), så prøv blot igen om lidt
+      scheduleRetry(60 * 1000);
+    }
+  }
+
+  function scheduleRetry(ms){
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => {
+      fetchWeather({ fromRetry: true });
+    }, ms);
+  }
+
+  async function fetchWeather(opts = {}){
+    // Hvis browseren melder "offline", så vent og prøv igen (ingen fejlspam)
+    if (!navigator.onLine){
+      document.getElementById("weatherSummary").textContent = "Ingen internetforbindelse";
+      document.getElementById("weatherIcon").textContent = "⚠️";
+      consecutiveFailures++;
+      scheduleRetry(30 * 1000);
+      return;
+    }
+
     const url =
       `https://api.open-meteo.com/v1/forecast` +
       `?latitude=${LAT}&longitude=${LON}` +
@@ -227,27 +270,49 @@
       `&timezone=Europe%2FCopenhagen`;
 
     try{
-      const r = await fetch(url, { cache: "no-store" });
-      if(!r.ok) throw new Error("HTTP " + r.status);
-      const data = await r.json();
+      // Timeout så fetch ikke kan hænge "for evigt"
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
 
+      const r = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+      clearTimeout(t);
+
+      if(!r.ok) throw new Error("HTTP " + r.status);
+
+      const data = await r.json();
       const c = data.current;
+
       const temp = c.temperature_2m;
       const wcode = c.weather_code;
-
       const [desc, icon] = weatherCodeMap[wcode] || ["Vejr", "⛅"];
 
       document.getElementById("weatherSummary").textContent = desc;
       document.getElementById("weatherIcon").textContent = icon;
       document.getElementById("tempLine").textContent = `${Math.round(temp)}°`;
 
-      const now = new Date();
-      document.getElementById("updatedLine").textContent = `Sidst opdateret: ${fmtHHMM(now)}`;
+      document.getElementById("updatedLine").textContent = `Sidst opdateret: ${fmtHHMM(new Date())}`;
+
+      consecutiveFailures = 0; // succes -> nulstil
 
     }catch(err){
+      consecutiveFailures++;
+      console.warn("Weather fetch failed:", err);
+
+      // Vis fejl (som før)
       document.getElementById("weatherSummary").textContent = "Kunne ikke hente vejr";
       document.getElementById("weatherIcon").textContent = "⚠️";
-      console.warn(err);
+
+      // Retry strategi:
+      // 1-2 fejl: prøv igen snart
+      // 3-4 fejl: prøv igen lidt senere
+      // 5+ fejl: genindlæs siden (soft restart)
+      if (consecutiveFailures <= 2){
+        scheduleRetry(20 * 1000);
+      } else if (consecutiveFailures <= 4){
+        scheduleRetry(60 * 1000);
+      } else {
+        softRestartPage("Too many consecutive weather failures");
+      }
     }
   }
 
@@ -255,18 +320,14 @@
   function msUntilNextQuarter(){
     const now = new Date();
     const minutes = now.getMinutes();
-    const seconds = now.getSeconds();
-    const ms = now.getMilliseconds();
-
     const nextQuarterMin = (Math.floor(minutes / 15) + 1) * 15;
-    const next = new Date(now);
 
+    const next = new Date(now);
     if (nextQuarterMin >= 60){
       next.setHours(now.getHours() + 1, 0, 0, 0);
     } else {
       next.setMinutes(nextQuarterMin, 0, 0);
     }
-
     return next.getTime() - now.getTime();
   }
 
@@ -275,13 +336,24 @@
     fetchWeather();
 
     // Planlæg næste præcise kvart
-    const delay = msUntilNextQuarter();
     setTimeout(function(){
       fetchWeather();
-      // Derefter hvert kvarter præcist
       setInterval(fetchWeather, 15 * 60 * 1000);
-    }, delay);
+    }, msUntilNextQuarter());
   }
+
+  // Når nettet kommer tilbage, så hent igen med det samme (og stop evt. retry-timer)
+  window.addEventListener("online", () => {
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = null;
+    fetchWeather({ fromOnline: true });
+  });
+
+  // Hvis den går offline, vis en mere meningsfuld tekst med det samme
+  window.addEventListener("offline", () => {
+    document.getElementById("weatherSummary").textContent = "Ingen internetforbindelse";
+    document.getElementById("weatherIcon").textContent = "⚠️";
+  });
 
   scheduleQuarterUpdates();
 </script>
