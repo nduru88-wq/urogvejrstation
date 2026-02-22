@@ -1,1 +1,475 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Infoskærm – Nørholm</title>
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#161a22;
+      --text:#e9edf3;
+      --muted:#a7b0c0;
+      --radius:18px;
+      --btn:#232a38;
+      --btnHover:#2b3446;
+      --btnBorder:rgba(255,255,255,.12);
+    }
+    *{ box-sizing:border-box; }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:var(--bg);
+      color:var(--text);
+    }
 
+    .wrap{
+      height:100%;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+      padding:14px;
+    }
+
+    .card{
+      background:var(--panel);
+      border-radius:var(--radius);
+      padding:26px 22px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .center{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      gap:14px;
+    }
+
+    .headline{
+      font-size:52px;
+      font-weight:900;
+      line-height:1.05;
+      margin:0;
+      color:var(--text);
+    }
+
+    .dateLine{
+      font-size:32px;
+      font-weight:800;
+      margin:0;
+      color:var(--text);
+      opacity:.95;
+    }
+
+    .bigTime{
+      font-size:92px;
+      font-weight:900;
+      line-height:1.02;
+      margin:0;
+      letter-spacing: .5px;
+    }
+
+    .dayPart{
+      font-size:38px;
+      font-weight:900;
+      margin:0;
+      opacity:.98;
+    }
+
+    .weatherIcon{
+      font-size:86px;
+      line-height:1;
+      margin-top:4px;
+    }
+
+    .bigTemp{
+      font-size:92px;
+      font-weight:900;
+      line-height:1.02;
+      margin:0;
+    }
+
+    .weatherDesc{
+      font-size:32px;
+      font-weight:900;
+      margin:0;
+      opacity:.95;
+    }
+
+    .rightFooter{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:auto;
+      padding-top:10px;
+    }
+    .updated{
+      font-size:16px;
+      font-style:italic;
+      color:var(--muted);
+      opacity:.9;
+      white-space:nowrap;
+    }
+
+    /* 🔊 Læs op-knap */
+    .speakBar{
+      display:flex;
+      justify-content:center;
+      margin-top:16px;
+    }
+    .speakBtn{
+      appearance:none;
+      border:1px solid var(--btnBorder);
+      background:var(--btn);
+      color:var(--text);
+      border-radius:14px;
+      padding:14px 18px;
+      font-size:22px;
+      font-weight:800;
+      letter-spacing:.2px;
+      cursor:pointer;
+      display:inline-flex;
+      gap:10px;
+      align-items:center;
+      justify-content:center;
+      min-width:220px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.22);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .speakBtn:active{ transform: scale(0.99); }
+    .speakBtn:hover{ background:var(--btnHover); }
+    .speakBtn:focus{ outline: 2px solid rgba(255,255,255,.25); outline-offset: 3px; }
+
+    .speakHint{
+      font-size:14px;
+      color:var(--muted);
+      opacity:.9;
+      margin-top:8px;
+      text-align:center;
+    }
+
+    @media (max-width: 900px){
+      .wrap{ grid-template-columns: 1fr; }
+      .headline{ font-size:46px; }
+      .dateLine, .weatherDesc{ font-size:30px; }
+      .bigTime, .bigTemp{ font-size:84px; }
+      .weatherIcon{ font-size:78px; }
+      .dayPart{ font-size:34px; }
+      .speakBtn{ font-size:20px; padding:13px 16px; min-width:210px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- VENSTRE: UR -->
+    <section class="card" aria-label="Ur">
+      <div class="center">
+        <h1 class="headline" id="weekdayBig">—</h1>
+        <p class="dateLine" id="dateLine">—</p>
+        <p class="bigTime" id="timeLine">—:—</p>
+        <p class="dayPart" id="dayPartLine">—</p>
+
+        <div class="speakBar">
+          <button class="speakBtn" id="speakClockBtn" type="button" aria-label="Læs tid og dato op">
+            🔊 Læs op
+          </button>
+        </div>
+        <div class="speakHint">Tryk for at få læst tidspunktet op</div>
+      </div>
+    </section>
+
+    <!-- HØJRE: VEJR -->
+    <section class="card" aria-label="Vejr">
+      <div class="center">
+        <h1 class="headline" id="placeName">Nørholm</h1>
+        <p class="weatherDesc" id="weatherSummary">Henter vejr…</p>
+        <div class="weatherIcon" id="weatherIcon">⛅</div>
+        <p class="bigTemp" id="tempLine">—°</p>
+
+        <div class="speakBar">
+          <button class="speakBtn" id="speakWeatherBtn" type="button" aria-label="Læs vejret op">
+            🔊 Læs op
+          </button>
+        </div>
+        <div class="speakHint">Tryk for at få læst vejret op</div>
+      </div>
+
+      <div class="rightFooter">
+        <div class="updated" id="updatedLine">Sidst opdateret: —</div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+  // --- FAST LOKATION: NØRHOLM (ca.)
+  const LAT = 57.037145;
+  const LON = 9.737577;
+
+  // --- UR / DATO
+  const dkWeekdays = ["Søndag","Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag"];
+  const dkMonths = ["januar","februar","marts","april","maj","juni","juli","august","september","oktober","november","december"];
+
+  function dayPart(h){
+    if (h >= 5 && h < 9)  return "Morgen";
+    if (h >= 9 && h < 12) return "Formiddag";
+    if (h >= 12 && h < 17) return "Eftermiddag";
+    if (h >= 17 && h < 22) return "Aften";
+    return "Nat";
+  }
+  function pad2(n){ return String(n).padStart(2,"0"); }
+
+  function tickClock(){
+    const now = new Date();
+    document.getElementById("weekdayBig").textContent = dkWeekdays[now.getDay()];
+    document.getElementById("dateLine").textContent = `${now.getDate()}. ${dkMonths[now.getMonth()]} ${now.getFullYear()}`;
+    document.getElementById("timeLine").textContent = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    document.getElementById("dayPartLine").textContent = dayPart(now.getHours());
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // --- VEJR (Open-Meteo: ingen nøgle)
+  const weatherCodeMap = {
+    0: ["Klart", "☀️"],
+    1: ["Mest klart", "🌤️"],
+    2: ["Let skyet", "⛅"],
+    3: ["Overskyet", "☁️"],
+    45: ["Tåge", "🌫️"],
+    48: ["Tåge", "🌫️"],
+    51: ["Støvregn", "🌦️"],
+    53: ["Støvregn", "🌦️"],
+    55: ["Støvregn", "🌧️"],
+    61: ["Regn", "🌧️"],
+    63: ["Regn", "🌧️"],
+    65: ["Kraftig regn", "🌧️"],
+    71: ["Sne", "🌨️"],
+    73: ["Sne", "🌨️"],
+    75: ["Kraftig sne", "🌨️"],
+    80: ["Byger", "🌦️"],
+    81: ["Byger", "🌦️"],
+    82: ["Kraftige byger", "⛈️"],
+    95: ["Torden", "⛈️"],
+    96: ["Torden + hagl", "⛈️"],
+    99: ["Torden + hagl", "⛈️"]
+  };
+
+  function fmtHHMM(d){
+    return d.toLocaleTimeString("da-DK", {hour:"2-digit", minute:"2-digit"});
+  }
+
+  // -------- Auto-recovery / "browser-genstart"
+  let consecutiveFailures = 0;
+  let retryTimer = null;
+
+  const RELOAD_COOLDOWN_MS = 5 * 60 * 1000;
+  const MAX_RELOADS_PER_HOUR = 3;
+
+  function canReloadNow(){
+    const now = Date.now();
+
+    const lastReload = Number(sessionStorage.getItem("lastReloadTs") || "0");
+    if (now - lastReload < RELOAD_COOLDOWN_MS) return false;
+
+    const history = JSON.parse(sessionStorage.getItem("reloadHistory") || "[]")
+      .filter(ts => now - ts < 60 * 60 * 1000);
+
+    if (history.length >= MAX_RELOADS_PER_HOUR) return false;
+
+    history.push(now);
+    sessionStorage.setItem("reloadHistory", JSON.stringify(history));
+    sessionStorage.setItem("lastReloadTs", String(now));
+    return true;
+  }
+
+  function softRestartPage(reason){
+    console.warn("Soft restart:", reason);
+    if (canReloadNow()){
+      location.reload();
+    } else {
+      scheduleRetry(60 * 1000);
+    }
+  }
+
+  function scheduleRetry(ms){
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => {
+      fetchWeather({ fromRetry: true });
+    }, ms);
+  }
+
+  async function fetchWeather(opts = {}){
+    if (!navigator.onLine){
+      document.getElementById("weatherSummary").textContent = "Ingen internetforbindelse";
+      document.getElementById("weatherIcon").textContent = "⚠️";
+      consecutiveFailures++;
+      scheduleRetry(30 * 1000);
+      return;
+    }
+
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${LAT}&longitude=${LON}` +
+      `&current=temperature_2m,weather_code` +
+      `&timezone=Europe%2FCopenhagen`;
+
+    try{
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+
+      const r = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+      clearTimeout(t);
+
+      if(!r.ok) throw new Error("HTTP " + r.status);
+
+      const data = await r.json();
+      const c = data.current;
+
+      const temp = c.temperature_2m;
+      const wcode = c.weather_code;
+      const [desc, icon] = weatherCodeMap[wcode] || ["Vejr", "⛅"];
+
+      document.getElementById("weatherSummary").textContent = desc;
+      document.getElementById("weatherIcon").textContent = icon;
+      document.getElementById("tempLine").textContent = `${Math.round(temp)}°`;
+
+      document.getElementById("updatedLine").textContent = `Sidst opdateret: ${fmtHHMM(new Date())}`;
+
+      consecutiveFailures = 0;
+
+    }catch(err){
+      consecutiveFailures++;
+      console.warn("Weather fetch failed:", err);
+
+      document.getElementById("weatherSummary").textContent = "Kunne ikke hente vejr";
+      document.getElementById("weatherIcon").textContent = "⚠️";
+
+      if (consecutiveFailures <= 2){
+        scheduleRetry(20 * 1000);
+      } else if (consecutiveFailures <= 4){
+        scheduleRetry(60 * 1000);
+      } else {
+        softRestartPage("Too many consecutive weather failures");
+      }
+    }
+  }
+
+  function msUntilNextQuarter(){
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const nextQuarterMin = (Math.floor(minutes / 15) + 1) * 15;
+
+    const next = new Date(now);
+    if (nextQuarterMin >= 60){
+      next.setHours(now.getHours() + 1, 0, 0, 0);
+    } else {
+      next.setMinutes(nextQuarterMin, 0, 0);
+    }
+    return next.getTime() - now.getTime();
+  }
+
+  function scheduleQuarterUpdates(){
+    fetchWeather();
+
+    setTimeout(function(){
+      fetchWeather();
+      setInterval(fetchWeather, 15 * 60 * 1000);
+    }, msUntilNextQuarter());
+  }
+
+  window.addEventListener("online", () => {
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = null;
+    fetchWeather({ fromOnline: true });
+  });
+
+  window.addEventListener("offline", () => {
+    document.getElementById("weatherSummary").textContent = "Ingen internetforbindelse";
+    document.getElementById("weatherIcon").textContent = "⚠️";
+  });
+
+  scheduleQuarterUpdates();
+
+  // =========================
+  // ✅ TALE / OPLÆSNING
+  // =========================
+  function supportsTTS(){
+    return ("speechSynthesis" in window) && ("SpeechSynthesisUtterance" in window);
+  }
+
+  function pickDanishVoice(){
+    const voices = window.speechSynthesis?.getVoices?.() || [];
+    return (
+      voices.find(v => (v.lang || "").toLowerCase() === "da-dk") ||
+      voices.find(v => (v.lang || "").toLowerCase().startsWith("da")) ||
+      null
+    );
+  }
+
+  function speak(text){
+    if (!supportsTTS()) {
+      console.warn("TTS ikke understøttet i denne browser.");
+      return;
+    }
+    const s = window.speechSynthesis;
+    s.cancel();
+
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "da-DK";
+    const v = pickDanishVoice();
+    if (v) u.voice = v;
+
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+
+    s.speak(u);
+  }
+
+  if (supportsTTS()){
+    window.speechSynthesis.onvoiceschanged = () => {};
+  }
+
+  function speakClock(){
+    const weekday = document.getElementById("weekdayBig").textContent.trim();
+    const date = document.getElementById("dateLine").textContent.trim();
+    const time = document.getElementById("timeLine").textContent.trim();
+    const part = document.getElementById("dayPartLine").textContent.trim();
+    speak(`${weekday}. Dato ${date}. Klokken er ${time}. Det er ${part}.`);
+  }
+
+  function speakWeather(){
+    const place = document.getElementById("placeName").textContent.trim() || "Nørholm";
+    const desc = document.getElementById("weatherSummary").textContent.trim();
+    const tempText = document.getElementById("tempLine").textContent.trim();
+    const tempNum = parseInt(tempText.replace(/[^\d\-]/g,""), 10);
+
+    if (!desc || desc === "Henter vejr…"){
+      speak(`Jeg henter vejret for ${place}.`);
+      return;
+    }
+    if (desc === "Ingen internetforbindelse"){
+      speak(`Der er ingen internetforbindelse, så jeg kan ikke hente vejret for ${place}.`);
+      return;
+    }
+    if (desc === "Kunne ikke hente vejr"){
+      speak(`Jeg kunne ikke hente vejret for ${place} lige nu.`);
+      return;
+    }
+
+    const tempPart = Number.isFinite(tempNum) ? ` og temperaturen er ${tempNum} grader` : "";
+    speak(`I ${place} er der lige nu ${desc.toLowerCase()}${tempPart}.`);
+  }
+
+  document.getElementById("speakClockBtn").addEventListener("click", speakClock);
+  document.getElementById("speakWeatherBtn").addEventListener("click", speakWeather);
+</script>
+</body>
+</html>
